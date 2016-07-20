@@ -3,6 +3,7 @@ import configparser
 import os
 import os.path
 import sys
+from opendrivecli.opendriveclient import OpenDriveClient
 
 # Global vars
 homedir = os.path.expanduser("~")
@@ -69,3 +70,6 @@ if not username or not password:
     sys.exit(1)
 
 log("Using username " + username, 2)
+
+od = OpenDriveClient(args, username, password)
+od.run()
