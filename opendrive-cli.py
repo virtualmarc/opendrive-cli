@@ -36,20 +36,6 @@ parser_upload.add_argument('remote_dir', help='Remote Directory (ID or Path)')
 
 args = args_parser.parse_args()
 
-
-def log(message, level=3):
-    """
-    Output Log Message
-    :param message: Log Message
-    :param level: Log Level (0 = Error, 1 = Warning, 2 = Info, 3 = Debug)
-    """
-    if level <= args.v:
-        if level == 0:
-            sys.stderr.write(message + os.linesep)
-        else:
-            sys.stdout.write(message + os.linesep)
-
-
 # Username and Password
 if args.user:
     username = args.user
@@ -66,10 +52,8 @@ else:
     password = None
 
 if not username or not password:
-    log("Username or password not set", 0)
+    sys.stderr.write("[ERROR] Username or password not set" + os.linesep)
     sys.exit(1)
-
-log("Using username " + username, 2)
 
 od = OpenDriveClient(args, username, password)
 od.run()

@@ -1,5 +1,5 @@
-import os
 import sys
+from opendrivecli.opendriveapi import OpenDriveAPI
 
 
 class OpenDriveClient:
@@ -17,39 +17,44 @@ class OpenDriveClient:
         self.__args = args
         self.__username = username
         self.__password = password
-
-    def __log(self, message, level=3):
-        """
-        Output Log Message
-        :param message: Log Message
-        :param level: Log Level (0 = Error, 1 = Warning, 2 = Info, 3 = Debug)
-        """
-        if level <= self.__args.v:
-            if level == 0:
-                sys.stderr.write(message + os.linesep)
-            else:
-                sys.stdout.write(message + os.linesep)
+        self.__od = OpenDriveAPI(self.__args.v)
 
     def run(self):
         """
         Run the program
         """
-        self.__log("Starting OpenDrive Client", 3)
+        self.__od.log("Starting OpenDrive Client", 3)
+        # Login
+        if not self.__od.login(self.__username, self.__password):
+            sys.exit(1)
+        # Select Action Handler
         functions = {
             "put": self.__put
         }
         func = functions.get(self.__args.func, lambda: False)
         success = func()
         if success:
-            self.__log("Action completed successfully", 2)
+            self.__od.log("Action completed successfully", 2)
             sys.exit(0)
         else:
-            self.__log("Action completed with errors", 0)
+            self.__od.log("Action completed with errors", 0)
             sys.exit(1)
+
+    def __login(self):
+        """
+        Login to OpenDrive
+        """
+
+    def __convertPathToId(self, path):
+        """
+        Convert a Path to an ID
+        :param path: Absolute Path or ID
+        :return: ID for Path, return input when its an ID, None on invalid path
+        """
 
     def __put(self):
         """
         Upload a file
         :return: true on success, false on error
         """
-        self.__log("Uploading " + self.__args.local_file + " to " + self.__args.remote_dir)
+        self.__od.log("Uploading " + self.__args.local_file + " to " + self.__args.remote_dir)
