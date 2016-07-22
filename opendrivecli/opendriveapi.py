@@ -106,5 +106,9 @@ class OpenDriveAPI:
         """
         Logout from OpenDrive
         """
-        # @TODO Logout API Call
-        self.__sessionId = None
+        if self.__sessionId:
+            try:
+                self.__dopost(self.BASEURL + "session/logout.json", {"session_id": self.__sessionId})
+            except urllib.request.HTTPError as e:
+                self.log("Error logging out, got HTTP Status %d: %s" % (e.code, e.msg), 0)
+            self.__sessionId = None

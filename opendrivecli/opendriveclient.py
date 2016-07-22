@@ -33,6 +33,9 @@ class OpenDriveClient:
         }
         func = functions.get(self.__args.func, lambda: False)
         success = func()
+        # Logout
+        self.__od.logout()
+        # Exit
         if success:
             self.__od.log("Action completed successfully", 2)
             sys.exit(0)
