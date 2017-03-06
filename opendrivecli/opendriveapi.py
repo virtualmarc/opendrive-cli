@@ -136,7 +136,7 @@ class OpenDriveAPI:
             self.log("Error checking session exists, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
             return False
 
-    def trash(self, fileid):
+    def file_trash(self, fileid):
         """
         Move a file to the trash
         :param fileid: File ID to be deleted
@@ -156,7 +156,7 @@ class OpenDriveAPI:
             self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
             return False
 
-    def restore(self, fileid):
+    def file_restore(self, fileid):
         """
         Restore a file from the trash
         :param fileid: File ID to be restored
@@ -174,4 +174,27 @@ class OpenDriveAPI:
             return True
         except urllib.request.HTTPError as e:
             self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
+            return False
+
+    def file_sendbyemail(self, fileid, rcpt, subject="", body=""):
+        """
+        Send one or more files by email
+        :param fileid: File ID
+        :param rcpt: One or more email addresses, separated by comma
+        :param subject: Subject of the email
+        :param body: Body of the email
+        :return: true on success, false on error
+        """
+        if not self.loggedin():
+            return False
+        try:
+            resp = self.__dopost(self.BASEURL + "file/sendbyemail.json", {"session_id": self.__sessionId, "file_id": fileid, "recipient_emails": rcpt, "message_subject": subject, "message_body": body})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, status, resp.read()), self.LOG_ERROR)
+                return False
+
+            return True
+        except urllib.request.HTTPError as e:
+            self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, e.code, e.msg), self.LOG_ERROR)
             return False
