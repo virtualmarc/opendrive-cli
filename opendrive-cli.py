@@ -1,6 +1,5 @@
 import argparse
 import configparser
-import os
 import os.path
 import sys
 from opendrivecli.opendriveclient import OpenDriveClient

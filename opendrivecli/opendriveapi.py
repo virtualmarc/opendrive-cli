@@ -10,28 +10,31 @@ class OpenDriveAPI:
     OpenDrive API Class
     """
     BASEURL = "https://dev.opendrive.com/api/v1/"
+    LOG_ERROR = 0
+    LOG_WARN = 1
+    LOG_INFO = 2
+    LOG_DEBUG = 3
 
     def __init__(self, loglevel):
         self.__sessionId = None
         self.__loglevel = loglevel
 
-    def log(self, message, level=3):
+    def log(self, message, level=LOG_DEBUG):
         """
         Output Log Message
         :param message: Log Message
         :param level: Log Level (0 = Error, 1 = Warning, 2 = Info, 3 = Debug)
         """
         if level <= self.__loglevel:
-            if level == 0:
+            if level == self.LOG_ERROR:
                 sys.stderr.write("[ERROR] " + message + os.linesep)
+            elif level == self.LOG_WARN:
+                message = "[WARN] " + message
+            elif level == self.LOG_INFO:
+                message = "[INFO] " + message
             else:
-                if level == 1:
-                    message = "[WARN] " + message
-                elif level == 2:
-                    message = "[INFO] " + message
-                else:
-                    message = "[DEBUG] " + message
-                sys.stdout.write(message + os.linesep)
+                message = "[DEBUG] " + message
+            sys.stdout.write(message + os.linesep)
 
     def __decodejson(self, data):
         """
@@ -83,23 +86,23 @@ class OpenDriveAPI:
         :return: true on successful login, false on error
         """
         if not username or not password:
-            self.log("Username or password not set")
+            self.log("Username or password not set", self.LOG_ERROR)
             return False
         if self.__sessionId:
             self.logout()
         try:
-            self.log("Logging in to OpenDrive with Username " + username, 3)
+            self.log("Logging in to OpenDrive with Username " + username, self.LOG_DEBUG)
             resp = self.__dopost(self.BASEURL + "session/login.json", {"username": username, "passwd": password})
             status = resp.getcode()
             if status != 200:
-                self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (status, status.read()), 0)
+                self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (status, resp.read()), self.LOG_ERROR)
                 return False
 
             userinfo = self.__decodejson(resp.read())
             self.__sessionId = userinfo["SessionID"]
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (e.code, e.msg), 0)
+            self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
             return False
 
     def logout(self):
@@ -110,5 +113,45 @@ class OpenDriveAPI:
             try:
                 self.__dopost(self.BASEURL + "session/logout.json", {"session_id": self.__sessionId})
             except urllib.request.HTTPError as e:
-                self.log("Error logging out, got HTTP Status %d: %s" % (e.code, e.msg), 0)
+                self.log("Error logging out, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
             self.__sessionId = None
+
+    def loggedin(self):
+        """
+        Check if still logged in
+        :return: true if logged in, false if not
+        """
+        if not self.__sessionId:
+            return False
+        try:
+            resp = self.__dopost(self.BASEURL + "session/exists.json", {"session_id": self.__sessionId})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error checking session exists, got HTTP Status %d: %s" % (status, resp.read()), self.LOG_ERROR)
+                return False
+
+            sessioninfo = self.__decodejson(resp.read())
+            return sessioninfo["result"]
+        except urllib.request.HTTPError as e:
+            self.log("Error checking session exists, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
+            return False
+
+    def trash(self, fileid):
+        """
+        Move a file to the trash
+        :param fileid: File ID to be deleted
+        :return: true on success, false on error
+        """
+        if not self.loggedin():
+            return False
+        try:
+            resp = self.__dopost(self.BASEURL + "file/trash.json", {"session_id": self.__sessionId, "file_id": fileid})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, status, resp.read()), self.LOG_ERROR)
+                return False
+
+            return True
+        except urllib.request.HTTPError as e:
+            self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
+
