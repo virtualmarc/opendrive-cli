@@ -154,4 +154,24 @@ class OpenDriveAPI:
             return True
         except urllib.request.HTTPError as e:
             self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
+            return False
 
+    def restore(self, fileid):
+        """
+        Restore a file from the trash
+        :param fileid: File ID to be restored
+        :return: true on success, false on error
+        """
+        if not self.loggedin():
+            return False
+        try:
+            resp = self.__dopost(self.BASEURL + "file/restore.json", {"session_id": self.__sessionId, "file_id": fileid})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, status, resp.read()), self.LOG_ERROR)
+                return False
+
+            return True
+        except urllib.request.HTTPError as e:
+            self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
+            return False
