@@ -3,6 +3,8 @@ import os
 import json
 from hashlib import md5
 import urllib.request
+from opendrivecli.odloglevel import ODLogLevel
+from opendrivecli.odaccessperm import ODAccessPerm
 
 
 class OpenDriveAPI:
@@ -10,27 +12,26 @@ class OpenDriveAPI:
     OpenDrive API Class
     """
     BASEURL = "https://dev.opendrive.com/api/v1/"
-    LOG_ERROR = 0
-    LOG_WARN = 1
-    LOG_INFO = 2
-    LOG_DEBUG = 3
+    ACCESS_PRIVATE = 0
+    ACCESS_PUBLIC = 1
+    ACCESS_HIDDEN = 2
 
     def __init__(self, loglevel):
         self.__sessionId = None
         self.__loglevel = loglevel
 
-    def log(self, message, level=LOG_DEBUG):
+    def log(self, message, level=ODLogLevel.DEBUG):
         """
         Output Log Message
         :param message: Log Message
         :param level: Log Level (0 = Error, 1 = Warning, 2 = Info, 3 = Debug)
         """
         if level <= self.__loglevel:
-            if level == self.LOG_ERROR:
+            if level == ODLogLevel.ERROR:
                 sys.stderr.write("[ERROR] " + message + os.linesep)
-            elif level == self.LOG_WARN:
+            elif level == ODLogLevel.WARN:
                 message = "[WARN] " + message
-            elif level == self.LOG_INFO:
+            elif level == ODLogLevel.INFO:
                 message = "[INFO] " + message
             else:
                 message = "[DEBUG] " + message
@@ -86,23 +87,23 @@ class OpenDriveAPI:
         :return: true on successful login, false on error
         """
         if not username or not password:
-            self.log("Username or password not set", self.LOG_ERROR)
+            self.log("Username or password not set", ODLogLevel.ERROR)
             return False
         if self.__sessionId:
             self.logout()
         try:
-            self.log("Logging in to OpenDrive with Username " + username, self.LOG_DEBUG)
+            self.log("Logging in to OpenDrive with Username " + username, ODLogLevel.DEBUG)
             resp = self.__dopost(self.BASEURL + "session/login.json", {"username": username, "passwd": password})
             status = resp.getcode()
             if status != 200:
-                self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (status, resp.read()), self.LOG_ERROR)
+                self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             userinfo = self.__decodejson(resp.read())
             self.__sessionId = userinfo["SessionID"]
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
+            self.log("Error logging in to OpenDrive, got HTTP Status %d: %s" % (e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def logout(self):
@@ -113,7 +114,7 @@ class OpenDriveAPI:
             try:
                 self.__dopost(self.BASEURL + "session/logout.json", {"session_id": self.__sessionId})
             except urllib.request.HTTPError as e:
-                self.log("Error logging out, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
+                self.log("Error logging out, got HTTP Status %d: %s" % (e.code, e.msg), ODLogLevel.ERROR)
             self.__sessionId = None
 
     def loggedin(self):
@@ -127,13 +128,13 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "session/exists.json", {"session_id": self.__sessionId})
             status = resp.getcode()
             if status != 200:
-                self.log("Error checking session exists, got HTTP Status %d: %s" % (status, resp.read()), self.LOG_ERROR)
+                self.log("Error checking session exists, got HTTP Status %d: %s" % (status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             sessioninfo = self.__decodejson(resp.read())
             return sessioninfo["result"]
         except urllib.request.HTTPError as e:
-            self.log("Error checking session exists, got HTTP Status %d: %s" % (e.code, e.msg), self.LOG_ERROR)
+            self.log("Error checking session exists, got HTTP Status %d: %s" % (e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def file_trash(self, fileid):
@@ -148,12 +149,12 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "file/trash.json", {"session_id": self.__sessionId, "file_id": fileid})
             status = resp.getcode()
             if status != 200:
-                self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, status, resp.read()), self.LOG_ERROR)
+                self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
+            self.log("Error deleting file %s, got HTTP Status %d: %s" % (fileid, e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def file_restore(self, fileid):
@@ -168,12 +169,12 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "file/restore.json", {"session_id": self.__sessionId, "file_id": fileid})
             status = resp.getcode()
             if status != 200:
-                self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, status, resp.read()), self.LOG_ERROR)
+                self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
+            self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def file_sendbyemail(self, fileid, rcpt, subject=None, body=None):
@@ -196,12 +197,12 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "file/sendbyemail.json", req)
             status = resp.getcode()
             if status != 200:
-                self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, status, resp.read()), self.LOG_ERROR)
+                self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, e.code, e.msg), self.LOG_ERROR)
+            self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def file_rename(self, fileid, name):
@@ -217,12 +218,12 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "file/rename.json", {"session_id": self.__sessionId, "file_id": fileid, "new_file_name": name})
             status = resp.getcode()
             if status != 200:
-                self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, status, resp.read()), self.LOG_ERROR)
+                self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, e.code, e.msg), self.LOG_ERROR)
+            self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def file_movecopy(self, fileid, folderid, move=True, override=False, name=None):
@@ -252,12 +253,12 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "file/move_copy.json", req)
             status = resp.getcode()
             if status != 200:
-                self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, status, resp.read()), self.LOG_ERROR)
+                self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, status, resp.read()), ODLogLevel.ERROR)
                 return False
 
             return True
         except urllib.request.HTTPError as e:
-            self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, e.code, e.msg), self.LOG_ERROR)
+            self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, e.code, e.msg), ODLogLevel.ERROR)
             return False
 
     def file_idbypath(self, path):
@@ -272,11 +273,32 @@ class OpenDriveAPI:
             resp = self.__dopost(self.BASEURL + "file/idbypath.json", {"session_id": self.__sessionId, "path": path})
             status = resp.getcode()
             if status != 200:
-                self.log("Error getting file id by path %s, got HTTP Status %d: %s" % (path, status, resp.read()), self.LOG_ERROR)
+                self.log("Error getting file id by path %s, got HTTP Status %d: %s" % (path, status, resp.read()), ODLogLevel.ERROR)
                 return None
 
             fileinfo = self.__decodejson(resp.read())
             return fileinfo["FileId"]
         except urllib.request.HTTPError as e:
-            self.log("Error getting file id by path %s, got HTTP Status %d: %s" % (path, e.code, e.msg), self.LOG_ERROR)
+            self.log("Error getting file id by path %s, got HTTP Status %d: %s" % (path, e.code, e.msg), ODLogLevel.ERROR)
             return None
+
+    def file_setaccess(self, fileid, access=ODAccessPerm.PRIVATE):
+        """
+        Set the Access permissions for a file
+        :param fileid: File ID
+        :param access: Access Permissions
+        :return: true on success, false on error
+        """
+        if not self.loggedin():
+            return None
+        try:
+            resp = self.__dopost(self.BASEURL + "file/access.json", {"session_id": self.__sessionId, "file_id": fileid, "file_ispublic": access.value})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error setting access permissions for file %s to %d, got HTTP Status %d: %s" % (fileid, access.value, status, resp.read()), ODLogLevel.ERROR)
+                return False
+
+            return True
+        except urllib.request.HTTPError as e:
+            self.log("Error setting access permissions for file %s to %d, got HTTP Status %d: %s" % (fileid, access.value, e.code, e.msg), ODLogLevel.ERROR)
+            return False
