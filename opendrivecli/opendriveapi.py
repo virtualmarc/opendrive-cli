@@ -259,3 +259,24 @@ class OpenDriveAPI:
         except urllib.request.HTTPError as e:
             self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, e.code, e.msg), self.LOG_ERROR)
             return False
+
+    def file_idbypath(self, path):
+        """
+        Get a File ID by it's path
+        :param path: Path to the file (not starting with /)
+        :return: File ID, or None if not found
+        """
+        if not self.loggedin():
+            return None
+        try:
+            resp = self.__dopost(self.BASEURL + "file/idbypath.json", {"session_id": self.__sessionId, "path": path})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error getting file id by path %s, got HTTP Status %d: %s" % (path, status, resp.read()), self.LOG_ERROR)
+                return None
+
+            fileinfo = self.__decodejson(resp.read())
+            return fileinfo["FileId"]
+        except urllib.request.HTTPError as e:
+            self.log("Error getting file id by path %s, got HTTP Status %d: %s" % (path, e.code, e.msg), self.LOG_ERROR)
+            return None
