@@ -198,3 +198,24 @@ class OpenDriveAPI:
         except urllib.request.HTTPError as e:
             self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, e.code, e.msg), self.LOG_ERROR)
             return False
+
+    def file_rename(self, fileid, name):
+        """
+        Rename a file
+        :param fileid: File ID
+        :param name: New Name
+        :return: true on success, false on error
+        """
+        if not self.loggedin():
+            return False
+        try:
+            resp = self.__dopost(self.BASEURL + "file/rename.json", {"session_id": self.__sessionId, "file_id": fileid, "new_file_name": name})
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, status, resp.read()), self.LOG_ERROR)
+                return False
+
+            return True
+        except urllib.request.HTTPError as e:
+            self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, e.code, e.msg), self.LOG_ERROR)
+            return False
