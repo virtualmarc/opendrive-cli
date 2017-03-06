@@ -176,7 +176,7 @@ class OpenDriveAPI:
             self.log("Error restoring file %s from trash, got HTTP Status %d: %s" % (fileid, e.code, e.msg), self.LOG_ERROR)
             return False
 
-    def file_sendbyemail(self, fileid, rcpt, subject="", body=""):
+    def file_sendbyemail(self, fileid, rcpt, subject=None, body=None):
         """
         Send one or more files by email
         :param fileid: File ID
@@ -188,7 +188,12 @@ class OpenDriveAPI:
         if not self.loggedin():
             return False
         try:
-            resp = self.__dopost(self.BASEURL + "file/sendbyemail.json", {"session_id": self.__sessionId, "file_id": fileid, "recipient_emails": rcpt, "message_subject": subject, "message_body": body})
+            req = {"session_id": self.__sessionId, "file_id": fileid, "recipient_emails": rcpt}
+            if subject:
+                req["message_subject"] = subject
+            if body:
+                req["message_body"] = body
+            resp = self.__dopost(self.BASEURL + "file/sendbyemail.json", req)
             status = resp.getcode()
             if status != 200:
                 self.log("Error sending file %s to %s, got HTTP Status %d: %s" % (fileid, rcpt, status, resp.read()), self.LOG_ERROR)
@@ -218,4 +223,39 @@ class OpenDriveAPI:
             return True
         except urllib.request.HTTPError as e:
             self.log("Error renaming file %s to %s, got HTTP Status %d: %s" % (fileid, name, e.code, e.msg), self.LOG_ERROR)
+            return False
+
+    def file_movecopy(self, fileid, folderid, move=True, override=False, name=None):
+        """
+        Move or copy a file
+        :param fileid: Source File ID
+        :param folderid: Destination Folder ID
+        :param move: true = Move, false = Copy
+        :param override: true = Override if destination exists, false = do not override
+        :param name: If set change the file name
+        :return: true on success, false on error
+        """
+        if not self.loggedin():
+            return False
+        try:
+            req = {"session_id": self.__sessionId, "src_file_id": fileid, "dst_folder_id": folderid}
+            if move:
+                req["move"] = "true"
+            else:
+                req["move"] = "false"
+            if override:
+                req["overwrite_if_exists"] = "true"
+            else:
+                req["overwrite_if_exists"] = "false"
+            if name:
+                req["new_file_name"] = name
+            resp = self.__dopost(self.BASEURL + "file/move_copy.json", req)
+            status = resp.getcode()
+            if status != 200:
+                self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, status, resp.read()), self.LOG_ERROR)
+                return False
+
+            return True
+        except urllib.request.HTTPError as e:
+            self.log("Error moving/copying file %s to folder %s, got HTTP Status %d: %s" % (fileid, folderid, e.code, e.msg), self.LOG_ERROR)
             return False
